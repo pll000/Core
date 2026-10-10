@@ -1,6 +1,12 @@
-# CoRe
+# CoRe: A Comprehensive Framework for Cross-Image Comparative Reasoning in Vision-Language Models
 
-[中文说明](README.zh-CN.md) · [Apache-2.0 License](LICENSE)
+[中文说明](README.zh-CN.md) · [Paper](https://arxiv.org/abs/2607.12786) · [Apache-2.0 License](LICENSE)
+
+Code for our paper accepted at **ACM Multimedia 2026 (ACM MM 2026)**.
+
+**Authors:** Lin Peng, Cong Wan, Zeyu Guo, SongLin Dong, and Yihong Gong.
+
+**Corresponding author:** Cong Wan.
 
 Cross-image comparative reasoning with Qwen3-VL-4B-Thinking and GRPO, covering counting, depth, distance, and spatial relations.
 
@@ -55,3 +61,17 @@ CUDA_VISIBLE_DEVICES=0 python scripts/evaluate.py \
 ```
 
 Available tasks: `counting`, `depth`, `distance`, and `relation`. Evaluation saves both predictions and accuracy statistics.
+
+## Citation
+
+If you use this work in your research, please cite:
+
+```bibtex
+@inproceedings{peng2026core,
+  title     = {{CoRe}: A Comprehensive Framework for Cross-Image Comparative Reasoning in Vision-Language Models},
+  author    = {Peng, Lin and Wan, Cong and Guo, Zeyu and Dong, SongLin and Gong, Yihong},
+  booktitle = {Proceedings of the 34th ACM International Conference on Multimedia},
+  year      = {2026},
+  url       = {https://arxiv.org/abs/2607.12786}
+}
+```
