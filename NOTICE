@@ -1,0 +1,18 @@
+CoRe recovered implementation release
+
+This distribution includes ms-swift source by Alibaba, Inc. and its affiliates,
+under the Apache License, Version 2.0. Original copyright notices are retained.
+Upstream snapshot: 7e67b27b46ad246c8962bd2a82d7afc515c4b73d, version 3.9.0.dev0.
+
+Four framework files have project-specific changes for Qwen3-VL support:
+  swift/llm/model/constant.py
+  swift/llm/model/model/qwen.py
+  swift/llm/template/constant.py
+  swift/llm/template/template/qwen.py
+Their changes are reproduced in third_party/ms-swift-qwen3-vl.patch.
+
+The original project reward is preserved in rewards/unified_reward_four_new.py.
+New release tooling adds portable data export, validation, launch and evaluation
+entry points; it does not revise the scientific reward algorithm.
+
+The code license does not license source dataset images or model weights.

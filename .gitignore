@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+outputs/
+.cache/
+*.log
+.DS_Store
+# Distribute image payloads separately from the code repository.
+data/images/
+*.tar.gz
+*.zip

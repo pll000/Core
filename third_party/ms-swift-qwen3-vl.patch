@@ -1,0 +1,133 @@
+diff --git a/swift/llm/model/constant.py b/swift/llm/model/constant.py
+index e14e9127..b0461486 100644
+--- a/swift/llm/model/constant.py
++++ b/swift/llm/model/constant.py
+@@ -163,6 +163,7 @@ class MLLMModelType:
+     qwen_audio = 'qwen_audio'
+     qwen2_vl = 'qwen2_vl'
+     qwen2_5_vl = 'qwen2_5_vl'
++    qwen3_vl = 'qwen3_vl'
+     qwen2_5_omni = 'qwen2_5_omni'
+     qwen2_audio = 'qwen2_audio'
+     qvq = 'qvq'
+diff --git a/swift/llm/model/model/qwen.py b/swift/llm/model/model/qwen.py
+index 1682aecd..053d9e66 100644
+--- a/swift/llm/model/model/qwen.py
++++ b/swift/llm/model/model/qwen.py
+@@ -787,6 +787,16 @@ def get_model_tokenizer_qwen2_5_vl(*args, **kwargs):
+     return get_model_tokenizer_qwen2_vl(*args, **kwargs)
+ 
+ 
++def get_model_tokenizer_qwen3_vl(*args, **kwargs):
++    from transformers import Qwen3VLForConditionalGeneration
++    kwargs['automodel_class'] = kwargs['automodel_class'] or Qwen3VLForConditionalGeneration
++    model, processor = get_model_tokenizer_multimodal(*args, **kwargs)
++    if model is not None:
++        base_model = model.model if 'AWQ' in model.__class__.__name__ else model
++        patch_get_input_embeddings(base_model.visual, 'patch_embed')
++    return model, processor
++
++
+ register_model(
+     ModelMeta(
+         MLLMModelType.qwen2_5_vl, [
+@@ -810,6 +820,23 @@ register_model(
+         requires=['transformers>=4.49', 'qwen_vl_utils>=0.0.6', 'decord'],
+         tags=['vision', 'video']))
+ 
++register_model(
++    ModelMeta(
++        MLLMModelType.qwen3_vl, [
++            ModelGroup([
++                Model('Qwen/Qwen3-VL-2B-Thinking', 'Qwen/Qwen3-VL-2B-Thinking'),
++                Model('Qwen/Qwen3-VL-4B-Thinking', 'Qwen/Qwen3-VL-4B-Thinking'),
++                Model('Qwen/Qwen3-VL-8B-Thinking', 'Qwen/Qwen3-VL-8B-Thinking'),
++                Model('Qwen/Qwen3-VL-32B-Thinking', 'Qwen/Qwen3-VL-32B-Thinking'),
++            ]),
++        ],
++        TemplateType.qwen3_vl,
++        get_model_tokenizer_qwen3_vl,
++        model_arch=ModelArch.qwen2_vl,
++        architectures=['Qwen3VLForConditionalGeneration'],
++        requires=['transformers>=4.57'],
++        tags=['vision', 'video']))
++
+ register_model(
+     ModelMeta(
+         MLLMModelType.mimo_vl, [
+diff --git a/swift/llm/template/constant.py b/swift/llm/template/constant.py
+index 4aed17b3..1185347b 100644
+--- a/swift/llm/template/constant.py
++++ b/swift/llm/template/constant.py
+@@ -118,6 +118,7 @@ class MLLMTemplateType:
+     qwen_audio = 'qwen_audio'
+     qwen2_vl = 'qwen2_vl'
+     qwen2_5_vl = 'qwen2_5_vl'
++    qwen3_vl = 'qwen3_vl'
+     qwen2_5_omni = 'qwen2_5_omni'
+     qwen2_audio = 'qwen2_audio'
+     qwen2_gme = 'qwen2_gme'
+diff --git a/swift/llm/template/template/qwen.py b/swift/llm/template/template/qwen.py
+index 81bd5555..aeb27059 100644
+--- a/swift/llm/template/template/qwen.py
++++ b/swift/llm/template/template/qwen.py
+@@ -430,6 +430,59 @@ class Qwen2_5VLTemplate(Qwen2VLTemplate):
+ 
+ register_template(QwenTemplateMeta(MLLMTemplateType.qwen2_5_vl, template_cls=Qwen2_5VLTemplate))
+ 
++
++class Qwen3VLTemplate(Qwen2_5VLTemplate):
++    version = 'v3'
++
++    def replace_tag(self, media_type: Literal['image', 'video', 'audio'], index: int,
++                    inputs: StdTemplateInputs) -> List[Context]:
++        assert media_type in {'image', 'video'}
++        if media_type == 'image':
++            if self.mode == 'lmdeploy':
++                return ['<|vision_start|>', [-100], '<|vision_end|>']
++            return ['<|vision_start|><|image_pad|><|vision_end|>']
++        return ['<|vision_start|><|video_pad|><|vision_end|>']
++
++    def _encode(self, inputs: StdTemplateInputs) -> Dict[str, Any]:
++        encoded = Template._encode(self, inputs)
++        processor = self.processor
++        input_ids = encoded['input_ids']
++        labels = encoded['labels']
++        loss_scale = encoded.get('loss_scale', None)
++        for media_type in ['images', 'videos']:
++            mm_data = getattr(inputs, media_type)
++            if mm_data:
++                if media_type == 'images':
++                    media_token = self.image_token_id
++                    media_inputs = processor.image_processor(images=mm_data, return_tensors='pt')
++                    media_grid_thw = media_inputs['image_grid_thw']
++                else:
++                    processor_func = getattr(processor, 'video_processor', processor.image_processor)
++                    media_inputs = processor_func(videos=mm_data, return_tensors='pt')
++                    media_grid_thw = media_inputs['video_grid_thw']
++                    media_token = self.video_token_id
++                idx_list = findall(input_ids, media_token)
++                merge_length = processor.image_processor.merge_size**2
++
++                def _get_new_tokens(i):
++                    token_len = (media_grid_thw[i].prod() // merge_length)
++                    return [media_token] * token_len
++
++                input_ids, labels, loss_scale = self._extend_tokens(input_ids, labels, loss_scale, idx_list,
++                                                                    _get_new_tokens)
++                encoded.update(media_inputs)
++
++        encoded['input_ids'] = input_ids
++        encoded['labels'] = labels
++        encoded['loss_scale'] = loss_scale
++        return encoded
++
++    def _post_encode(self, model, inputs: Dict[str, Any]) -> Dict[str, Any]:
++        return inputs
++
++
++register_template(QwenTemplateMeta(MLLMTemplateType.qwen3_vl, template_cls=Qwen3VLTemplate))
++
+ register_template(
+     QwenTemplateMeta(
+         MLLMTemplateType.mimo_vl,
