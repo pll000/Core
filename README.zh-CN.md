@@ -1,6 +1,6 @@
 # CoRe: A Comprehensive Framework for Cross-Image Comparative Reasoning in Vision-Language Models
 
-[English](README.md) · [论文](https://arxiv.org/abs/2607.12786) · [Apache-2.0 许可证](LICENSE)
+[English](README.md) · [论文](https://arxiv.org/abs/2607.12786) · [数据集](https://huggingface.co/datasets/3212367097pl-pllove/CoRe-20K) · [Apache-2.0 许可证](LICENSE)
 
 本仓库提供论文实现，论文已被 **ACM Multimedia 2026（ACM MM 2026）** 接收。
 
@@ -23,7 +23,14 @@ python -m pip install --no-deps -e third_party/ms-swift
 
 ## 准备数据
 
-仓库已包含 `data/` 下的训练和测试标注。图片不纳入 Git；训练前请将对应的 CoRe 图片文件夹放入以下目录：
+训练前请下载 [Hugging Face 上的 CoRe-20K 数据集](https://huggingface.co/datasets/3212367097pl-pllove/CoRe-20K)。完整压缩包约 299 MB，包含 60,000 个图片文件、训练和测试标注以及元数据。在 `Core` 仓库根目录执行：
+
+```bash
+curl -fL --retry 3 "https://huggingface.co/datasets/3212367097pl-pllove/CoRe-20K/resolve/main/CoRe-data.tar.gz?download=true" -o CoRe-data.tar.gz
+tar -xzf CoRe-data.tar.gz --strip-components=1
+```
+
+解压后的文件位于 `data/` 下，图片目录如下：
 
 ```text
 data/images/
